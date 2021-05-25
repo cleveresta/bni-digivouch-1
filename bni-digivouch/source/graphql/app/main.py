@@ -29,9 +29,39 @@ class Inquiry(graphene.ObjectType):
     zone_id = graphene.String()
     product_code = graphene.String()
     success = graphene.String()
-    respond_code = graphene.String()
-    message = graphene.String()
-    data = graphene.String()
+    response_code = graphene.String()
+    # message = graphene.String()
+    ID = graphene.String()
+    EN = graphene.String()
+    # data = graphene.String()
+    inquiry_id = graphene.String()
+    account_number = graphene.String()
+    customer_name = graphene.String()
+    product_name = graphene.String()
+    product_code = graphene.String()
+    category = graphene.String()
+    amount = graphene.String()
+    total_admin = graphene.String()
+    processing_fee = graphene.String()
+    denom = graphene.String()
+    validity = graphene.String()
+    customer_detail = graphene.String()
+    bill_details = graphene.String()
+    product_details = graphene.String()
+    extra_fields = graphene.String()
+    
+class Message(graphene.ObjectType):
+    ID = graphene.String()
+    EN = graphene.String()
+    
+class Payment(graphene.ObjectType):
+    inquiry_id = graphene.String()
+    account_number = graphene.String()
+    product_code = graphene.String()
+    amount = graphene.String()
+    ref_number = graphene.String()
+    partner_id = graphene.String()
+    
     
 
 class Query(graphene.ObjectType):
@@ -44,6 +74,7 @@ class Query(graphene.ObjectType):
             product_code=graphene.String())
     product_list_brand = graphene.List(Product, brand=graphene.String(default_value="*"),
             startIndex=graphene.Int(default_value=0), endIndex=graphene.Int(default_value=1000))
+    message = graphene.Field(Message, ID=graphene.String(), EN=graphene.String())
     
     def resolve_total_count(self, info):
     	return len(db)
@@ -113,13 +144,36 @@ class Query(graphene.ObjectType):
         
         data_payload = json.loads(p)
         
-        r = requests.post('http://dev.openapi.ayopop.id/api/v1/bill/payment', json=data_payload)
+        r = requests.post('http://192.168.65.151:18082/v1/bill/check', json=data_payload)
         api_response = r.text
         print(r.text)
         
         respond = json.loads(api_response)
-        
-        return respond
+        x = respond["data"]
+        y = Inquiry(response_code=respond["responseCode"],
+                    success=respond["success"],
+                    ID=respond["message"].get("ID"),
+                    EN=respond["message"].get("EN"),
+                    inquiry_id=x.get("inquiryId"),
+                    account_number=x.get("accountNumber"),
+                    customer_name=x.get("customerName"),
+                    product_name=x.get("productName"),
+                    product_code =x.get("productCode"),
+                    category=x.get("category"),
+                    amount=x.get("amount"),
+                    total_admin=x.get("total_admin"),
+                    processing_fee=x.get("processingFee"),
+                    denom=x.get("denom"),
+                    validity=x.get("validity"),
+                    customer_detail=x.get("customerDetail"),
+                    bill_details=x.get("billDetails"),
+                    product_details=x.get("productDetails"),
+                    extra_fields=x.get("extraFields"))
+                    
+        # z = Message(ID=respond["message"].get("ID"),
+                    # EN=respond["message"].get("EN"))
+
+        return y
 
 app = FastAPI()
 app.add_route("/graphql", GraphQLApp(schema=graphene.Schema(query=Query)))
