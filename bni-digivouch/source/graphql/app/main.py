@@ -3,8 +3,9 @@ from fastapi import FastAPI
 from starlette.graphql import GraphQLApp
 from data import db, setup
 import tinydb
-import requests,json,aiohttp
+import requests,json
 from string import Template
+from kafka import KafkaProducer
 
 setup()
 
@@ -22,18 +23,13 @@ class Product(graphene.ObjectType):
     
     def resolve_category(parent, info):
         return parent.category
+        
 
-class Inquiry(graphene.ObjectType):
-    partner_id = graphene.String(default_value="")
-    account_number = graphene.String()
-    zone_id = graphene.String()
-    product_code = graphene.String()
-    success = graphene.String()
-    response_code = graphene.String()
-    # message = graphene.String()
+class Message(graphene.ObjectType):
     ID = graphene.String()
     EN = graphene.String()
-    # data = graphene.String()
+    
+class Data(graphene.ObjectType):
     inquiry_id = graphene.String()
     account_number = graphene.String()
     customer_name = graphene.String()
@@ -49,10 +45,17 @@ class Inquiry(graphene.ObjectType):
     bill_details = graphene.String()
     product_details = graphene.String()
     extra_fields = graphene.String()
+
+class Inquiry(graphene.ObjectType):
+    partner_id = graphene.String(default_value="")
+    account_number = graphene.String()
+    zone_id = graphene.String()
+    product_code = graphene.String()
+    success = graphene.String()
+    response_code = graphene.String()
+    message = graphene.Field(Message, ID=graphene.String(), EN=graphene.String())
+    data = graphene.Field(Data)
     
-class Message(graphene.ObjectType):
-    ID = graphene.String()
-    EN = graphene.String()
     
 class Payment(graphene.ObjectType):
     inquiry_id = graphene.String()
@@ -61,7 +64,9 @@ class Payment(graphene.ObjectType):
     amount = graphene.String()
     ref_number = graphene.String()
     partner_id = graphene.String()
-    
+    buyer_email = graphene.String()
+    public_buyer_id = graphene.String()
+    callback_urls = graphene.String()
     
 
 class Query(graphene.ObjectType):
@@ -74,7 +79,10 @@ class Query(graphene.ObjectType):
             product_code=graphene.String())
     product_list_brand = graphene.List(Product, brand=graphene.String(default_value="*"),
             startIndex=graphene.Int(default_value=0), endIndex=graphene.Int(default_value=1000))
-    message = graphene.Field(Message, ID=graphene.String(), EN=graphene.String())
+    payment = graphene.Field(Payment, inquiry_id=graphene.String(), account_number=graphene.String(), 
+            product_code=graphene.String(), amount=graphene.String(), ref_number=graphene.String(), 
+            partner_id=graphene.String(), buyer_email=graphene.String(), public_buyer_id=graphene.String(), 
+            callback_urls=graphene.String())
     
     def resolve_total_count(self, info):
     	return len(db)
@@ -144,7 +152,7 @@ class Query(graphene.ObjectType):
         
         data_payload = json.loads(p)
         
-        r = requests.post('http://192.168.65.151:18082/v1/bill/check', json=data_payload)
+        r = requests.post('http://localhost:8080/v1/bill/check', json=data_payload)
         api_response = r.text
         print(r.text)
         
@@ -152,9 +160,8 @@ class Query(graphene.ObjectType):
         x = respond["data"]
         y = Inquiry(response_code=respond["responseCode"],
                     success=respond["success"],
-                    ID=respond["message"].get("ID"),
-                    EN=respond["message"].get("EN"),
-                    inquiry_id=x.get("inquiryId"),
+                    message=(Message(ID=respond["message"].get("ID"), EN=respond["message"].get("EN"))),
+                    data=(Data(inquiry_id=x.get("inquiryId"),
                     account_number=x.get("accountNumber"),
                     customer_name=x.get("customerName"),
                     product_name=x.get("productName"),
@@ -168,12 +175,47 @@ class Query(graphene.ObjectType):
                     customer_detail=x.get("customerDetail"),
                     bill_details=x.get("billDetails"),
                     product_details=x.get("productDetails"),
-                    extra_fields=x.get("extraFields"))
+                    extra_fields=x.get("extraFields"))))
                     
-        # z = Message(ID=respond["message"].get("ID"),
-                    # EN=respond["message"].get("EN"))
+
 
         return y
+    def resolve_payment(self, info, inquiry_id, account_number, product_code, amount, ref_number, 
+            partner_id, buyer_email, public_buyer_id, callback_urls):
+        inq_id = inquiry_id
+        acc_num = account_number
+        prod_code = product_code
+        amnt = amount
+        rf_num = ref_number
+        prtnr_id = partner_id
+        byr_email = buyer_email
+        pblc_byr_id = public_buyer_id
+        cb_url = callback_urls
+        payload = """{"inquiryId": ${inq_id},
+            "accountNumber": "${acc_num}",
+            "productCode": "${prod_code}",
+            "amount": ${amnt},
+            "refNumber": "${rf_num}",
+            "partnerId": "${prtnr_id}",
+            "buyerDetails": {
+                "buyerEmail": "${byr_email}",
+                "publicBuyerId": "${pblc_byr_id}"
+            },
+            "CallbackUrls": [
+                "${cb_url}"
+            ]
+        }"""
+    
+        t = Template(payload)
+        p = t.substitute(inq_id=inq_id, acc_num=acc_num, prod_code=prod_code, amnt=amnt, rf_num=rf_num,
+                    prtnr_id=prtnr_id, byr_email=byr_email, pblc_byr_id=pblc_byr_id, cb_url=cb_url)
+        data = json.loads(p)
+        
+        producer = KafkaProducer(bootstrap_servers=['localhost:9092'], value_serializer=lambda m: json.dumps(p).encode('utf-8'))
+        producer.send('ayopop', {'test':'perdana'})
+        
+        return data
+    
 
 app = FastAPI()
 app.add_route("/graphql", GraphQLApp(schema=graphene.Schema(query=Query)))
