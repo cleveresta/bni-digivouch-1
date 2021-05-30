@@ -159,7 +159,7 @@ class Query(graphene.ObjectType):
         respond = json.loads(api_response)
         x = respond["data"]
         y = Inquiry(partner_id=partner,
-                    account_number =account,
+                    account_number=account,
                     zone_id=zone,
                     product_code=product,
                     response_code=respond["responseCode"],
