@@ -89,7 +89,7 @@ class Query(graphene.ObjectType):
             product_code=graphene.String(), amount=graphene.String(), ref_number=graphene.String(), 
             partner_id=graphene.String(), buyer_email=graphene.String(), public_buyer_id=graphene.String(), 
             callback_urls=graphene.String())
-    brand_list_category = graphene.Field(Brandlist, category=graphene.String(default_value="*"))
+    brand_list_category = graphene.List(Brandlist, category=graphene.String(default_value="*"))
     
     def resolve_total_count(self, info):
     	return len(db)
@@ -228,6 +228,7 @@ class Query(graphene.ObjectType):
     def resolve_brand_list_category(self, info, category):
         produk = tinydb.Query()
         list_product =[]
+        list_brand =[]
         cari = db.all() if category=="*" else db.search(produk.Category == category)
         
         for i in cari:
@@ -235,9 +236,10 @@ class Query(graphene.ObjectType):
             
         # import pdb; pdb.set_trace()
         x = set(list_product)
-        
-        y = Brandlist(brand=x)
-        return y
+        # y = Brandlist(brand=x)
+        for y in x:
+            list_brand.append(Brandlist(brand=y))
+        return list_brand
     
 
 app = FastAPI()
