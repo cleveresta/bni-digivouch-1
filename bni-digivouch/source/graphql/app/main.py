@@ -6,6 +6,7 @@ import tinydb
 import requests,json
 from string import Template
 from kafka import KafkaProducer
+from collections import OrderedDict
 
 setup()
 
@@ -67,6 +68,11 @@ class Payment(graphene.ObjectType):
     buyer_email = graphene.String()
     public_buyer_id = graphene.String()
     callback_urls = graphene.String()
+    payload = graphene.String()
+    
+class Brandlist(graphene.ObjectType):
+    category = graphene.String(default_value="")
+    brand = graphene.String(default_value="")
     
 
 class Query(graphene.ObjectType):
@@ -83,6 +89,7 @@ class Query(graphene.ObjectType):
             product_code=graphene.String(), amount=graphene.String(), ref_number=graphene.String(), 
             partner_id=graphene.String(), buyer_email=graphene.String(), public_buyer_id=graphene.String(), 
             callback_urls=graphene.String())
+    brand_list_category = graphene.Field(Brandlist, category=graphene.String(default_value="*"))
     
     def resolve_total_count(self, info):
     	return len(db)
@@ -152,17 +159,13 @@ class Query(graphene.ObjectType):
         
         data_payload = json.loads(p)
         
-        r = requests.post('http://localhost:8080/v1/bill/check', json=data_payload)
+        r = requests.post('http://192.168.65.151:18082/v1/bill/check', json=data_payload)
         api_response = r.text
         print(r.text)
         
         respond = json.loads(api_response)
         x = respond["data"]
-        y = Inquiry(partner_id=partner,
-                    account_number=account,
-                    zone_id=zone,
-                    product_code=product,
-                    response_code=respond["responseCode"],
+        y = Inquiry(response_code=respond["responseCode"],
                     success=respond["success"],
                     message=(Message(ID=respond["message"].get("ID"), EN=respond["message"].get("EN"))),
                     data=(Data(inquiry_id=x.get("inquiryId"),
@@ -213,12 +216,28 @@ class Query(graphene.ObjectType):
         t = Template(payload)
         p = t.substitute(inq_id=inq_id, acc_num=acc_num, prod_code=prod_code, amnt=amnt, rf_num=rf_num,
                     prtnr_id=prtnr_id, byr_email=byr_email, pblc_byr_id=pblc_byr_id, cb_url=cb_url)
-        data = json.loads(p)
+        data = json.dumps(p)
         
         producer = KafkaProducer(bootstrap_servers=['localhost:9092'], value_serializer=lambda m: json.dumps(p).encode('utf-8'))
         producer.send('ayopop', {'test':'perdana'})
         
-        return data
+        x = Payment(payload=p)
+        
+        return x
+    
+    def resolve_brand_list_category(self, info, category):
+        produk = tinydb.Query()
+        list_product =[]
+        cari = db.all() if category=="*" else db.search(produk.Category == category)
+        
+        for i in cari:
+            list_product.append(i.get("Brand"))
+            
+        # import pdb; pdb.set_trace()
+        x = set(list_product)
+        
+        y = Brandlist(brand=x)
+        return y
     
 
 app = FastAPI()
