@@ -1,5 +1,5 @@
-from kafka import KafkaConsumer
-import json
+from kafka import KafkaConsumer, KafkaProducer
+import json, requests
 
 if __name__ == "__main__":
     consumer = KafkaConsumer(
@@ -12,3 +12,6 @@ if __name__ == "__main__":
     print("starting the consumer")
     for msg in consumer:
         print("payment ayopop = {}".format(msg.value))
+        payload = json.loads(msg.value)
+        bayar = requests.post('http://192.168.65.151:18082/v1/bill/payment', json=payload)
+        print(bayar.text)
