@@ -1,0 +1,136 @@
+import sys, os, cx_Oracle
+from typing import Optional
+from fastapi import FastAPI
+from pydantic import BaseModel
+from datetime import datetime
+
+app = FastAPI()
+
+DBUSER = os.getenv("DBUSER")
+DBPASS = os.getenv("DBPASS")
+DBCONN = os.getenv("DBCONN")
+
+if DBUSER is None or DBPASS is None or DBCONN is None:
+       sys.exit("[ERROR] Exit! Database parameters are not set!")
+       
+TABLES = {}
+TABLES["ayopop_transaction_log"] = (
+    "CREATE TABLE ayopop_transaction_log ("
+    "  inquiry_id           int(11) NOT NULL,"
+    "  trx_date             datetime NOT NULL,"
+    "  account_num_voucher  varchar(64) NOT NULL,"
+    "  product_code         varchar(32) NOT NULL,"
+    "  ref_number           varchar(32) NOT NULL,"
+    "  amount               number NOT NULL,"
+    "  account_num          varchar(17) NOT NULL,"
+    "  journal_num          varchar(6) ,"
+    "  response_code        varchar(5) ,"
+    "  response_message     varchar(512) "
+    ") ")
+
+TABLES["ayopop_callback_log"] = (
+    "CREATE TABLE ayopop_callback_log ("
+    "  transaction_id       int(11) NOT NULL,"
+    "  callback_date        datetime NOT NULL,"
+    "  account_num_voucher  varchar(64) NOT NULL,"
+    "  product_code         varchar(32) NOT NULL,"
+    "  ref_number           varchar(32) NOT NULL,"
+    "  amount               number NOT NULL,"
+    "  response_code        varchar(5) ,"
+    "  response_message     varchar(512) "
+    ") ")
+
+pool = cx_Oracle.SessionPool(user=DBUSER, 
+                             password=DBPASS,
+                             dsn=DBCONN, 
+                             min=2,
+                             max=5, 
+                             increment=1, 
+                             encoding="UTF-8")
+
+@app.on_event("startup")
+async def startup_event():
+    connection = pool.acquire()
+    cursor = connection.cursor()
+    table_exists = cursor.execute("SELECT table_name FROM all_tables"
+                                  " WHERE table_name LIKE '%AYOPOP%'" 
+                                  ).fetchall()
+    if len(table_exists) == len(TABLES): pass
+    else:
+        for i in TABLES:
+            cursor.execute(i)
+        pool.release(connection)
+
+@app.on_event("shutdown")
+def shutdown_event():
+    pool.close()
+
+class AyopopTransaction(BaseModel):
+    inquiry_id: str         
+    trx_date: datetime         
+    account_num_voucher: str
+    product_code: str      
+    ref_number: str        
+    amount: float            
+    account_num: str       
+    journal_num: str
+    response_code: str      
+    response_message: str   
+
+class AyopopCallback(BaseModel):
+    transaction_id: str     
+    callback_date: datetime      
+    account_num_voucher: str
+    product_code: str       
+    ref_number: str         
+    amount: float             
+    response_code: str      
+    response_message: str   
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+@app.post("/db/transaction")
+def transaction(trx: AyopopTransaction):
+    connection = pool.acquire()
+    cursor = connection.cursor()
+    sql = """INSERT INTO ayopop_transaction_log (inquiry_id, trx_date,
+                                account_num_voucher, product_code, 
+                                ref_number, amount, account_num, journal_num,
+                                response_code, response_message )
+             VALUES (:inquiry_id, :trx_date, 
+                    :account_num_voucher, :product_code, 
+                    :ref_number, :amount, :account_num, :journal_num,
+                    :response_code, :response_message) """
+    data = dict(inquiry_id=trx.inquiry_id, trx_date=trx.trx_date,
+                account_num_voucher=trx.account_num_voucher, product_code=trx.product_code, 
+                ref_number=trx.ref_number, amount=trx.amount, account_num=trx_account_num, journal_num=trx.journal_num,
+                response_code=trx.response_code, response_message=trx.response_message
+                )
+    cursor.execute(sql, data)
+    connection.commit()
+    pool.release(connection)
+    return { "status": "inserting transaction to database"}
+
+@app.post("/db/callback")
+def callback(cb: AyopopCallback):
+    connection = pool.acquire()
+    cursor = connection.cursor()
+    sql = """INSERT INTO ayopop_callback_log (transaction_id, callback_date,
+                                account_num_voucher, product_code, 
+                                ref_number, amount, 
+                                response_code, response_message )
+             VALUES (:inquiry_id, :trx_date, 
+                    :account_num_voucher, :product_code, 
+                    :ref_number, :amount, 
+                    :response_code, :response_message) """
+    data = dict(inquiry_id=trx.inquiry_id, trx_date=trx.trx_date,
+                account_num_voucher=trx.account_num_voucher, product_code=trx.product_code, 
+                ref_number=trx.ref_number, amount=trx.amount,
+                response_code=trx.response_code, response_message=trx.response_message
+                )
+    cursor.execute(sql, data)
+    connection.commit()
+    pool.release(connection)
+    return {"status": "inserting callback to database"}
