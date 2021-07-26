@@ -3,21 +3,45 @@ version: "3"
 services:
   ayopop-proxy:
     build: ./source/ayopop-proxy/
+    environment:
+      HTTPS_PROXY: http://inet.bni.co.id:8080
     labels:
       - "traefik.http.routers.ayopop-proxy.rule=Host(`ayopop-proxy.docker`)"
   graphql:
     build: ./source/graphql/
-    ports:
-      - "18000:8000"
     depends_on:
       - ayopop-proxy
     labels:
       - "traefik.http.routers.graphql.rule=PathPrefix(`/graphql`)"
-  reverse-proxy:
+  ayopop-callback-getter:
+    build: ./source/ayopop-callback-getter/
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      HTTP_PROXY: http://inet.bni.co.id:8080
+      HTTPS_PROXY: http://inet.bni.co.id:8080
+  core-payment:
+    build: ./source/core-payment/
+    labels:
+      - "traefik.http.routers.core-payment.rule=Host(`core-payment.docker`)"    
+  core-reversal:
+    build: ./source/core-reversal/      
+    labels:
+      - "traefik.http.routers.core-reversal.rule=Host(`core-reversal.docker`)"    
+  database-write:
+    build: ./source/database-write/
+    environment: 
+      DBUSER: ${DBUSER}
+      DBPASS: ${DBPASS}
+      DBCONN: ${DBCONN}
+    labels:
+      - "traefik.http.routers.database-write.rule=Host(`database-write.docker`)"
+  traefik:
     image: traefik:v2.4
     command: --api.insecure=true --providers.docker --accesslog=true
     ports:
-      - "80:80"
-      - "8080:8080"
+      - "18000:80"
+      - "28000:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
