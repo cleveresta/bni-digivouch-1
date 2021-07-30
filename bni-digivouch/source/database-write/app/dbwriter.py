@@ -38,7 +38,7 @@ TABLES["ayopop_callback_log"] = (
     "      amount               number(20) NOT NULL, "
     "      response_code        varchar(5) ,         "
     "      response_message     varchar(512)         "
-    "    ); " ")
+    "    );  ")
 
 pool = cx_Oracle.SessionPool(user=DBUSER, 
                              password=DBPASS,
