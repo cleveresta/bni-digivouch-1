@@ -25,7 +25,7 @@ TABLES["ayopop_transaction_log"] = (
      " account_num          varchar2(17) NOT NULL,"  
      " journal_num          varchar2(6) ,         "
      " response_code        varchar2(5) ,         "
-     " response_message     varchar2(512) );      "
+     " response_message     varchar2(512) )      "
     ") ")
 
 TABLES["ayopop_callback_log"] = (
