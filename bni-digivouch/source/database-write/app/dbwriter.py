@@ -57,8 +57,8 @@ async def startup_event():
                                   ).fetchall()
     if len(table_exists) == len(TABLES): pass
     else:
-        for i in TABLES:
-            cursor.execute(i)
+        for v in TABLES.values():
+            cursor.execute(v)
         pool.release(connection)
 
 @app.on_event("shutdown")
