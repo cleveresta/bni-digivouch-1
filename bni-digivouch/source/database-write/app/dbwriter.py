@@ -15,30 +15,30 @@ if DBUSER is None or DBPASS is None or DBCONN is None:
        
 TABLES = {}
 TABLES["ayopop_transaction_log"] = (
-    "CREATE TABLE ayopop_transaction_log ("
-    "  inquiry_id           int(11) NOT NULL,"
-    "  trx_date             datetime NOT NULL,"
-    "  account_num_voucher  varchar(64) NOT NULL,"
-    "  product_code         varchar(32) NOT NULL,"
-    "  ref_number           varchar(32) NOT NULL,"
-    "  amount               number NOT NULL,"
-    "  account_num          varchar(17) NOT NULL,"
-    "  journal_num          varchar(6) ,"
-    "  response_code        varchar(5) ,"
-    "  response_message     varchar(512) "
-    ") ")
+    " CREATE TABLE ayopop_transaction_log (      "
+     " inquiry_id           number(11) NOT NULL,  "
+     " trx_date             timestamp NOT NULL,   "
+     " account_num_voucher  varchar2(64) NOT NULL,"  
+     " product_code         varchar2(32) NOT NULL,"  
+     " ref_number           varchar2(32) NOT NULL,"  
+     " amount               number(20) NOT NULL,  "
+     " account_num          varchar2(17) NOT NULL,"  
+     " journal_num          varchar2(6) ,         "
+     " response_code        varchar2(5) ,         "
+     " response_message     varchar2(512) );      "
+    "); ")
 
 TABLES["ayopop_callback_log"] = (
-    "CREATE TABLE ayopop_callback_log ("
-    "  transaction_id       int(11) NOT NULL,"
-    "  callback_date        datetime NOT NULL,"
-    "  account_num_voucher  varchar(64) NOT NULL,"
-    "  product_code         varchar(32) NOT NULL,"
-    "  ref_number           varchar(32) NOT NULL,"
-    "  amount               number NOT NULL,"
-    "  response_code        varchar(5) ,"
-    "  response_message     varchar(512) "
-    ") ")
+    "CREATE TABLE ayopop_callback_log (             "
+    "      transaction_id       number(11) NOT NULL,"
+    "      callback_date        timestamp NOT NULL,  "
+    "      account_num_voucher  varchar(64) NOT NULL,"
+    "      product_code         varchar(32) NOT NULL,"
+    "      ref_number           varchar(32) NOT NULL,"
+    "      amount               number(20) NOT NULL, "
+    "      response_code        varchar(5) ,         "
+    "      response_message     varchar(512)         "
+    "    ); " ")
 
 pool = cx_Oracle.SessionPool(user=DBUSER, 
                              password=DBPASS,
