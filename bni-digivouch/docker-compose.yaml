@@ -2,27 +2,32 @@ version: "3"
    
 services:
   ayopop-proxy:
+    image: jtl-tkgiharbor.hq.bni.co.id/soadev/ayopop-proxy:0.1
     build: ./source/ayopop-proxy/
     environment:
       HTTPS_PROXY: http://inet.bni.co.id:8080
-    labels:
-      - "traefik.http.routers.ayopop-proxy.rule=Host(`ayopop-proxy.docker`)"
   graphql:
+    image: jtl-tkgiharbor.hq.bni.co.id/soadev/digivouch-graphql:0.1
     build: ./source/graphql/
     ports:
       - 18000:8000
     depends_on:
       - ayopop-proxy
-    labels:
-      - "traefik.http.routers.graphql.rule=PathPrefix(`/graphql`)"
+  core-payment:
+    image: jtl-tkgiharbor.hq.bni.co.id/soadev/core-payment:0.1
+    build: ./source/core-payment/
+    environment: 
+      CORESERVICE_URL: ${CORESERVICE_URL}    
   ayopop-callback-getter:
+    image: jtl-tkgiharbor.hq.bni.co.id/soadev/ayopop-callback-getter:0.1
     build: ./source/ayopop-callback-getter/
+    environment: 
+      SQS_URL: ${SQS_URL}
+      HTTPS_PROXY: http://inet.bni.co.id:8080
   database-write:
+    image: jtl-tkgiharbor.hq.bni.co.id/soadev/database-write:0.1
     build: ./source/database-write/
     environment: 
       DBUSER: ${DBUSER}
       DBPASS: ${DBPASS}
       DBCONN: ${DBCONN}
-    labels:
-      - "traefik.http.routers.database-write.rule=Host(`database-write.docker`)"
-  
