@@ -22,6 +22,9 @@ services:
     image: jtl-tkgiharbor.hq.bni.co.id/soadev/ayopop-callback-getter:0.1
     build: ./source/ayopop-callback-getter/
     environment: 
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       SQS_URL: ${SQS_URL}
       HTTPS_PROXY: http://inet.bni.co.id:8080
   database-write:
